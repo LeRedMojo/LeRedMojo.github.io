@@ -13,7 +13,7 @@ The mechanics in order: (1) attacker sends mail with forged sender to a guarante
 
 Reference [RFC 5321](https://datatracker.ietf.org/doc/html/rfc5321)
 
-![NDR backscatter flow](/assets/lib/NDRFlow.png)
+![NDR backscatter flow](/assets/img/NDRFlow.png)
 _Figure 1: NDR backscatter flow_
 
 The technical bypass becomes dangerous when combined with social engineering. Users rarely understand why they would receive an email from their own address, most interpret it as either account compromise or a forgotten send. When the message body contains instructions like "copy this link into your browser for security verification," users often comply, believing they're responding to a legitimate prompt from their own account. The result is credential harvesting via a fake login portal, with no malicious link ever clicked through traditional automated channels.
