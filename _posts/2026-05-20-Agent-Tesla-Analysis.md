@@ -29,9 +29,9 @@ rotation that hides every meaningful string behind indexed lookups
 into a single large array. Both are signatures of obfuscator.io, 
 a JavaScript obfuscation tool commonly used in malware delivery.
 
-![Example of raw sample](/assets/img/AgentTeslaRawCode.png)
+![Example of raw sample](LeRedMojo.github.io\assets\img\AgentTeslaRawCode.png)
 
-![Example of clean sample](/assets/img/AgentTeslaCleanCode.png)
+![Example of clean sample](LeRedMojo.github.io\assets\img\AgentTeslaCleanCode.png)
 
 
 ## What is a dropper
@@ -51,15 +51,15 @@ To make sense of all these hieroglyphs, here are the steps taken to improve unde
 
 **Note:** always make a copy of the sample in case you mess up the structure of the malware when modifying it. To make sense of the code, it is essential to rename the variables according to their function. After identifying the functions that retrieve the indexes and prepare them for assembly, here is an example from many other cases:
 
-![Raw code](/assets/img/AgentTeslaFunctionRawCollector.png)
+![Raw code](LeRedMojo.github.io\assets\img\AgentTeslaFunctionRawCollector.png)
 
-![Clean code](/assets/img/AgentTeslaFunctionCleanCode.png)
+![Clean code](LeRedMojo.github.io\assets\img\AgentTeslaFunctionCleanCode.png)
 
 It is really tedious work manually but it helps a lot to better understand the flow of everything.
 
 These indexes reference a variable that stores all the strings used by the malware.
 
-![Variable that stores the elements](/assets/img/PayloadString.png)
+![Variable that stores the elements](LeRedMojo.github.io\assets\img\PayloadString.png)
 
 ## Deobfuscation
 
@@ -98,7 +98,7 @@ that exists everywhere wscript.exe runs.
 The point of this block is not initialization. It is an environment 
 check disguised as initialization.
 
-![WScript.Quit(1) decoded](/assets/img/DecryptedWScript.png)
+![WScript.Quit(1) decoded](LeRedMojo.github.io\assets\img\DecrpyedWScript.png)
 
 With the kill switch commented out and the string table dumped, the rest 
 of the sample could be read end-to-end. The behavioral profile that emerged maps cleanly to MITRE ATT&CK.
