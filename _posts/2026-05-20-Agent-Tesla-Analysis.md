@@ -1,8 +1,8 @@
 ---
 title: "Static analysis of an obfuscated Agent Tesla JavaScript dropper"
-date: 2026-05-13 10:00:00 -0400
+date: 2026-05-20 10:00:00 -0400
 categories: [Malware analysis]
-tags: [agent-tesla,email-security, phishing, YARA, malware,keylogger]
+tags: [agent-tesla, email-security, phishing, YARA, malware, dropper]
 ---
 
 ## Executive Summary
@@ -69,6 +69,7 @@ payload activity. No interesting behavior. Just silent exit.
 
 The block responsible:
 
+{% raw %}
 ```javascript
 var _0x2bb521 = _0x21bd,
     _0x56c4c9 = _0x21bd,
@@ -86,6 +87,7 @@ try {
     WScript[_0x56c4c9(0x78)](0x1);
 }
 ```
+{% endraw %}
 
 At first this looked like routine initialization. The script creates 
 a COM object, calls a method on it, and exits if anything fails. But 
