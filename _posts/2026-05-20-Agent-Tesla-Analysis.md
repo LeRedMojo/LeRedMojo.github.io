@@ -53,7 +53,7 @@ To make sense of all these hieroglyphs, here are the steps taken to improve unde
 
 ![Raw code](/assets/img/AgentTeslaFunctionRawCollector.png)
 
-![Clean code](/assets/img/AgentTeslaFunctionCleanCode.png)
+![Clean code](/assets/img/AgentTeslaFunctionCleanCollector.png)
 
 It is really tedious work manually but it helps a lot to better understand the flow of everything.
 
