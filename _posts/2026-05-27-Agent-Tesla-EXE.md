@@ -192,7 +192,7 @@ Second, even on the payload they are the wrong layer for a family-detection rule
 
 ## Closing thoughts
 
-The interesting part of this analysis was not the final answer. Finding the SMTP credentials inside the static initializer took a minute once I searched for SmtpClient. The real value was the messy route there—the dead ends, the wrong hypotheses about the C2, and the stalled debug sessions. Every roadblock taught me something the working path never could have.
+The interesting part of this analysis was not the final answer. Finding the SMTP credentials inside the static initializer took a minute once I searched for SmtpClient. The real value was the messy route there, the dead ends, the wrong hypotheses about the C2, and the stalled debug sessions. Every roadblock taught me something the working path never could have.
 
 To track this specific engine, I have written a custom YARA rule targeting these structural features rather than fragile network domains. You can view the rule and the analysis artifacts on my GitHub: [The rule](https://github.com/LeRedMojo/ThreatHunting/blob/main/YARA/Malware/AgentTeslaEXE.yar)
 
