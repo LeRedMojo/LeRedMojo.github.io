@@ -255,4 +255,4 @@ This sample chains a steganographic loader, an obfuscated injector, and a creden
 
 The satisfying part of this one was not the token at the end. Decrypting the config took a few lines of Python once I had the algorithm. The value was the route there: patching anti-debug the wrong way and breaking the next stage's decryption, drowning in exception-based control flow, fighting a process-killer that bailed the moment it saw my tools.
 
-Here you can find my YARA and SIGMA rule:
+Here you can find my [YARA](https://github.com/LeRedMojo/ThreatHunting/blob/main/YARA/Malware/SnakeKeyLogger.yar) and [SIGMA](https://github.com/LeRedMojo/ThreatHunting/blob/main/SIGMA/malware/SnakeKeyLogger1.yaml) rule.
