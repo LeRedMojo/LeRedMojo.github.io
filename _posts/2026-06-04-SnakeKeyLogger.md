@@ -39,10 +39,10 @@ The reason this style exists is to defeat static analysis and antivirus. If the 
 
 This sample has four stages:
 
-1. **Stage 1** — the visible "Gladiator" game, a steganographic loader.
-2. **Stage 2** — `OptiMax.dll`, an AES-decrypted .NET loader, obfuscated with ConfuserEx, with anti-debug.
-3. **Stage 3** — `System Optimizer Ultimate.dll`, a ConfuserEx injector that decrypts and launches the final payload.
-4. **Stage 4** — the actual Snake Keylogger stealer (VB.NET).
+1. **Stage 1** - the visible "Gladiator" game, a steganographic loader.
+2. **Stage 2** - `OptiMax.dll`, an AES-decrypted .NET loader, obfuscated with ConfuserEx, with anti-debug.
+3. **Stage 3** - `System Optimizer Ultimate.dll`, a ConfuserEx injector that decrypts and launches the final payload.
+4. **Stage 4** - the actual Snake Keylogger stealer (VB.NET).
 
 ## Tools used
 
@@ -64,8 +64,6 @@ Assembly.Load(byte[])
     ← AsosiyForma..ctor()
       ← Program.Main()
 ```
-
-The loader lives in `InitializeComponent()`, the auto-generated Visual Studio designer method full of `this.button1.Location = ...` boilerplate that every analyst scrolls past. Burying the loader mid-boilerplate hides it in plain sight *and* makes it auto-run before the form even paints.
 
 ![Analyze Used By chain leading to InitializeComponent](/assets/img/AssemblyLoadSnake.png)
 
@@ -92,9 +90,9 @@ There is a universal way to grab the next stage without decoding any pixel math 
 ![MZ magic byte confirming stage 2 presences](/assets/img/ConfirmedExecutable.png)
 ![Saving the decrypted stage 2 byte array at the Assembly.Load breakpoint](/assets/img/OptiMaxDll.png)
 
-## Stage 2: the anti-debug trap that taught me a lesson
+## Stage 2: the anti-debug trap
 
-Stage 2 did not start where I expected. Stage 1 launched it via `Activator.CreateInstance` with a three-string constructor, so I went hunting for a matching constructor and there wasn't one. When the expected entry point is missing, the module initializer is the prime suspect. The `<Module>` static constructor (`.cctor`) runs automatically the instant the assembly loads, before any normal entry point. That is where execution really began.
+Stage 2 did not start where I expected. Stage 1 launched it via `Activator.CreateInstance` with a three-string constructor, so I went hunting for a matching constructor and there wasn't one. The `<Module>` static constructor (`.cctor`) runs automatically the instant the assembly loads, before any normal entry point. That is where execution really began.
 
 It led straight to a guard:
 
@@ -102,7 +100,7 @@ It led straight to a guard:
 if (Debugger.IsAttached) throw new Exception("Debugger Detected");
 ```
 
-An anti-debug check (MITRE T1622) running on load. My first instinct was to patch it out in the IL, change the check to a `ret` and save the module. **This was a mistake, and it cost me hours.** Stage 2 folds the assembly's own public-key token into the key it uses to decrypt stage 3. The moment I edited and re-saved the module, the token changed, the decryption key changed, and stage 3 silently decrypted into garbage that failed to load, the process just exited cleanly with code 0. Every "fix" made it worse.
+An anti-debug check (MITRE T1622) running on load. My first instinct was to patch it out in the IL, change the check to a `ret` and save the module. **This was a mistake, and it cost me hours...** Stage 2 folds the assembly's own public-key token into the key it uses to decrypt stage 3. The moment I edited and re-saved the module, the token changed, the decryption key changed, and stage 3 silently decrypted into garbage that failed to load, the process just exited cleanly with code 0. Every "fix" made it worse.
 
 > **Habit:** for managed anti-debug, do not patch the IL if any downstream stage derives keys from the assembly's identity. Instead, neutralise the check at the *debugger* level. dnSpy's "Prevent code from detecting the debugger" options make `Debugger.IsAttached` return false at runtime without modifying a single byte. The assembly stays intact, the token stays valid, and the next stage decrypts correctly.
 
@@ -110,15 +108,13 @@ Turning on those options (plus "Debug files loaded from the process' memory", so
 
 ![dnSpy options Prevent code from detecting the debugger](/assets/img/DebuggerPatch.png)
 
-## Stage 2's obfuscation, read by signature not name
+## Stage 2's obfuscation
 
 Stage 2 is obfuscated with ConfuserEx. Method names are pure noise, and Win32 APIs are resolved at runtime from split string fragments (`"Virtual"+"Alloc"`) so they never appear as searchable literals. You cannot grep for them. The trick is to identify the API by its delegate signature instead of its name: a function taking `(address, size, allocationType, protect)` is `VirtualAlloc` no matter what the malware calls it.
 
-Read as a set, the resolved APIs told a story: `OpenProcess` + `VirtualAlloc` + `WriteProcessMemory` + `VirtualProtect` = **process injection**. The presence of `OpenProcess` against a remote process indicates injection into *another* process, which matches Snake's documented behaviour.
+Read as a set, the resolved APIs: `OpenProcess` + `VirtualAlloc` + `WriteProcessMemory` + `VirtualProtect` = **process injection**. The presence of `OpenProcess` against a remote process indicates injection into *another* process, which matches Snake's documented behaviour.
 
 > **Habit:** don't analyse injection APIs one at a time. Recognise the quartet as a single behaviour.
-
-The decryptors were also here: an AES-256-CBC routine with a hardcoded key and IV, and a layered routine doing reverse-then-XOR-then-AES with the public-key token mixed in the anti-tamper that punished my earlier IL patch.
 
 ## Stage 3: the injector, and finding the payload in memory
 
@@ -203,39 +199,39 @@ Feeding it the encrypted blobs with the password from the static constructor pro
 2076143622                                        <- Telegram chat ID
 ```
 
-Decrypting the config blobs produced a Telegram bot token (<bot_id>:<auth> format) and a numeric chat ID. Combined with the /sendMessage?chat_id= and &caption= strings recovered by FLOSS, this identifies the exfiltration channel as the Telegram Bot API: the standard Snake pattern is a POST to https://api.telegram.org/bot<token>/sendMessage. The token and chat ID are the operator's live destination, recovered statically without running the stealer.
+Decrypting the config blobs produced a Telegram bot token (<bot_id>:<auth> format) and a numeric chat ID. Combined with the /sendMessage?chat_id= and &caption= strings recovered by FLOSS, this identifies the exfiltration channel as the Telegram Bot API: the standard Snake pattern is a POST to `hxxps://api[.]telegram[.]org/bot<token>/sendMessage`. The token and chat ID are the operator's live destination, recovered statically without running the stealer.
 
 ## MITRE ATT&CK Mapping (CAPA)
 
 This sample chains a steganographic loader, an obfuscated injector, and a credential-stealing payload, so the mapping spans the whole chain.
 
-**T1027 — Obfuscated Files or Information:** Stages 2–4 are ConfuserEx-obfuscated with renamed symbols, proxy calls, and control-flow flattening.
+**T1027 - Obfuscated Files or Information:** Stages 2-4 are ConfuserEx-obfuscated with renamed symbols, proxy calls, and control-flow flattening.
 
-**T1027.003 — Steganography:** Stage 1 hides the stage-2 assembly inside the pixel data of the `KILO` image resource, extracted via `ExtractPixelBytes`.
+**T1027.003 - Steganography:** Stage 1 hides the stage-2 assembly inside the pixel data of the `KILO` image resource, extracted via `ExtractPixelBytes`.
 
-**T1140 — Deobfuscate/Decode Files or Information:** Each stage decrypts the next in memory. Stage 2 uses AES-256-CBC; the stage-4 config uses DES-ECB with an MD5-derived key.
+**T1140 - Deobfuscate/Decode Files or Information:** Each stage decrypts the next in memory. Stage 2 uses AES-256-CBC; the stage-4 config uses DES-ECB with an MD5-derived key.
 
-**T1622 — Debugger Evasion:** Multiple stages check `Debugger.IsAttached` and throw. The stage-4 static constructor also terminates if analysis tools are detected.
+**T1622 - Debugger Evasion:** Multiple stages check `Debugger.IsAttached` and throw. The stage-4 static constructor also terminates if analysis tools are detected.
 
-**T1497.001 — Virtualization/Sandbox Evasion:** The payload enumerates and kills a hardcoded list of analysis and AV process names, and performs geo-IP checks before proceeding.
+**T1497.001 - Virtualization/Sandbox Evasion:** The payload enumerates and kills a hardcoded list of analysis and AV process names, and performs geo-IP checks before proceeding.
 
-**T1055 — Process Injection:** Stage 3 resolves the `OpenProcess` / `VirtualAlloc` / `WriteProcessMemory` / `VirtualProtect` quartet and injects the decrypted stage-4 payload.
+**T1055 - Process Injection:** Stage 3 resolves the `OpenProcess` / `VirtualAlloc` / `WriteProcessMemory` / `VirtualProtect` quartet and injects the decrypted stage-4 payload.
 
-**T1129 — Shared Modules:** Execution of stage 2 begins in the `<Module>` static constructor rather than a conventional entry point.
+**T1129 - Shared Modules:** Execution of stage 2 begins in the `<Module>` static constructor rather than a conventional entry point.
 
-**T1547.001 — Registry Run Keys:** Persistence via a Run key under `software\microsoft\windows\currentversion\run`.
+**T1547.001 - Registry Run Keys:** Persistence via a Run key under `software\microsoft\windows\currentversion\run`.
 
-**T1070.004 — File Deletion:** A `choice`-timer `cmd.exe` stub self-deletes the dropper.
+**T1070.004 - File Deletion:** A `choice`-timer `cmd.exe` stub self-deletes the dropper.
 
-**T1056.001 — Keylogging, T1113 — Screen Capture, T1115 — Clipboard Data:** The payload captures keystrokes (with `GetForegroundWindow`/`GetWindowText` for window context), screenshots, and clipboard contents.
+**T1056.001 - Keylogging, T1113 — Screen Capture, T1115 — Clipboard Data:** The payload captures keystrokes (with `GetForegroundWindow`/`GetWindowText` for window context), screenshots, and clipboard contents.
 
-**T1555.003 — Credentials from Web Browsers:** The payload decrypts saved logins from the Chromium family (AES-GCM via `BCryptDecrypt`) and the Gecko family (`PK11SDR_Decrypt`).
+**T1555.003 - Credentials from Web Browsers:** The payload decrypts saved logins from the Chromium family (AES-GCM via `BCryptDecrypt`) and the Gecko family (`PK11SDR_Decrypt`).
 
-**T1555 — Credentials from Password Stores:** Modules target Outlook, Foxmail, and Thunderbird mail credentials.
+**T1555 - Credentials from Password Stores:** Modules target Outlook, Foxmail, and Thunderbird mail credentials.
 
-**T1614 / T1016 — System Location & Network Configuration Discovery:** Recon via `checkip.dyndns.org` and `reallyfreegeoip.org`.
+**T1614 / T1016 - System Location & Network Configuration Discovery:** Recon via `checkip.dyndns.org` and `reallyfreegeoip.org`.
 
-**T1567.002 — Exfiltration Over Web Service:** This build exfiltrates over the Telegram Bot API. (SMTP and FTP exfiltration paths are also present but unused in this build.)
+**T1567.002 - Exfiltration Over Web Service:** This build exfiltrates over the Telegram Bot API. (SMTP and FTP exfiltration paths are also present but unused in this build.)
 
 ## Indicators of Compromise
 
